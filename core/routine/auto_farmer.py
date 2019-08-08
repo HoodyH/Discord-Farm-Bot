@@ -11,7 +11,7 @@ class AutoFarmer(object):
         self.__stop_action = False
 
         message = messages_to_send
-        time = 3  # 601
+        time = 3601
 
         while True:
             if self.__stop_action:
