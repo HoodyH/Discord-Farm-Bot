@@ -2,6 +2,7 @@ from threading import Thread
 from core.client import MyClient
 from asyncio import (get_event_loop)
 from data.bot_secret import my_token
+from data.data import actions_data
 
 from data.data import client_behavior
 
@@ -20,7 +21,7 @@ def run_it_forever(loop):
 
 def log_user(token, i):
 
-    clients.append(MyClient(client_behavior))
+    clients.append(MyClient(client_behavior, actions_data))
     clients_loop.append(get_event_loop())
     clients_loop[i].create_task(start(clients[i], token))
     clients_thread.append(Thread(target=run_it_forever, args=(clients_loop[i],)))
