@@ -73,7 +73,7 @@ class AutoFarmer(object):
         )
         return time_actions
 
-    async def start_loop(self, channel):
+    async def start_loop(self, channel, report_channel):
 
         self.__stop_action = False
         # on the first call the loop will kick in fast
@@ -86,6 +86,7 @@ class AutoFarmer(object):
             if not self.__pause_action:
 
                 time_actions = self._generate_time_action(is_first=first_loop)
+                await report_channel.send(time_actions)
 
                 typing_time = 0
                 for action, time in time_actions:
@@ -98,7 +99,7 @@ class AutoFarmer(object):
                         await channel.send(action)
                         Log.print_action_log(
                             self.user,
-                            'sent message: "{}" in location: "{}"'.format(action, channel.name)
+                            'sent message: "{}" in location: "{}"'.format(action, 'channel')
                         )
                     else:
                         typing_time = 0

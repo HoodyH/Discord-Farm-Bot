@@ -12,7 +12,7 @@ class MyClient(Client):
         super(MyClient, self).__init__()
 
         self.user_id = None
-        self._info_channel = None
+        self._report_channel = None
         self.ignore_updates = True
 
         self.scheduler = ThreadScheduler()
@@ -53,11 +53,11 @@ class MyClient(Client):
                             self.auto_farmers.append(auto_farmer)
 
                             await self.scheduler.start_loop(
-                                await auto_farmer.start_loop(channel)
+                                await auto_farmer.start_loop(channel, self._report_channel)
                             )
 
             if message.content.startswith('save_channel'):
-                self._info_channel = message.channel
+                self._report_channel = message.channel
                 await message.channel.send('ok, saved')
 
             if message.content.startswith('pause!'):
@@ -85,10 +85,10 @@ class MyClient(Client):
 
             if str(before.status) != "offline" and str(after.status) == "offline":
                 self._pause_farmers()
-                await self._info_channel.send('ok, paused')
+                await self._report_channel.send('ok, paused')
             elif str(before.status) != str(after.status):
                 self._resume_farmers()
-                await self._info_channel.send('ok, resumed')
+                await self._report_channel.send('ok, resumed')
             else:
                 return
 
