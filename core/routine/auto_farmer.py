@@ -5,7 +5,8 @@ from random import (randrange, choices)
 
 class AutoFarmer(object):
 
-    def __init__(self, farmer_data):
+    def __init__(self, user, farmer_data):
+        self.user = user
         self.farmer_data = farmer_data
         self.__stop_action = False
         self.__pause_action = False
@@ -17,7 +18,7 @@ class AutoFarmer(object):
         choice = choices(population, weights)
         return choice[0]
 
-    def _generate_time_action(self):
+    def _generate_time_action(self, is_first=False):
 
         time_actions = []
         loop_time = self.farmer_data.get('loop_time', 10)
@@ -40,13 +41,17 @@ class AutoFarmer(object):
 
             message = action_data.get('message', 'mmh...')
             execution_probability = action_data.get('execution_probability', 1)
-            do_after_time = action_data.get('do_after_time', [2, 10])
 
-            do_action = self._true_false(execution_probability)
+            # on the first call the loop will kick in fast
+            if is_first and (key_counter is 0):
+                do_after_time = [2, 8]
+            else:
+                do_after_time = action_data.get('do_after_time', [2, 10])
+
             # do this action based on execution_probability given
+            do_action = self._true_false(execution_probability)
             if do_action:
                 t = randrange(do_after_time[0], do_after_time[1])
-                # if key_counter=0 not counted as total_time
                 if key_counter is not 0:
                     total_time += t
                 time_actions.append((message, t))
@@ -61,13 +66,18 @@ class AutoFarmer(object):
         remaining_time = loop_time - total_time
         if remaining_time > 0:
             time_actions.append((None, remaining_time))
-        print(time_actions)
 
+        Log.print_action_log(
+            self.user,
+            'calculate the loop for this task: "{}"'.format(time_actions)
+        )
         return time_actions
 
-    async def start_loop(self, user, channel):
+    async def start_loop(self, channel):
 
         self.__stop_action = False
+        # on the first call the loop will kick in fast
+        first_loop = True
 
         while True:
             if self.__stop_action:
@@ -75,7 +85,8 @@ class AutoFarmer(object):
 
             if not self.__pause_action:
 
-                time_actions = self._generate_time_action()
+                time_actions = self._generate_time_action(is_first=first_loop)
+
                 typing_time = 0
                 for action, time in time_actions:
                     await sleep(time - typing_time)  # time in seconds to send the command
@@ -86,11 +97,15 @@ class AutoFarmer(object):
                         await sleep(typing_time)
                         await channel.send(action)
                         Log.print_action_log(
-                            user,
-                            'sent message: "{}" in location: "{}"'.format(action, user.name)
+                            self.user,
+                            'sent message: "{}" in location: "{}"'.format(action, channel.name)
                         )
                     else:
                         typing_time = 0
+                first_loop = False
+
+            else:
+                first_loop = True
 
     def stop_loop(self):
         self.__stop_action = True
