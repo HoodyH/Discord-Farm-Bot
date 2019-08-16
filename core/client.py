@@ -13,7 +13,7 @@ class MyClient(Client):
 
         self.user_id = None
         self._report_channel = None
-        self.ignore_updates = True
+        self.ignore_updates = False
 
         self.scheduler = ThreadScheduler()
         self.client_behavior = UserBehavior(client_behavior_data)
@@ -32,6 +32,8 @@ class MyClient(Client):
 
         self.user_id = self.user.id
         Log.print_on_ready(self.user)
+
+        self._report_channel = self.get_channel(610557045875146775)
 
         await self.client_behavior.start_cycle(self)
 
@@ -85,10 +87,10 @@ class MyClient(Client):
 
             if str(before.status) != "offline" and str(after.status) == "offline":
                 self._pause_farmers()
-                await self._report_channel.send('ok, paused')
+                await self._report_channel.send('trainer has gone OFF paused')
             elif str(before.status) != str(after.status):
                 self._resume_farmers()
-                await self._report_channel.send('ok, resumed')
+                await self._report_channel.send('trainer has gone ON resumed')
             else:
                 return
 

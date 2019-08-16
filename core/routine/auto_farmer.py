@@ -107,6 +107,7 @@ class AutoFarmer(object):
 
             else:
                 first_loop = True
+                await sleep(1)
 
     def stop_loop(self):
         self.__stop_action = True
