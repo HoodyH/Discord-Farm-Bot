@@ -1,14 +1,13 @@
 from core.observer import Subject
-from core.modules.scheduler import (ThreadScheduler, Scheduler)
-from asyncio import (sleep)
-from datetime import datetime
+from core.modules.scheduler import ThreadScheduler, Scheduler
+from asyncio import sleep
 
 
 class UserBehavior(object):
     """
     Define the Behavior of the user, when go to sleep, when wakeup, when is busy for work etc
     """
-    def __init__(self, client_behavior_data):
+    def __init__(self):
 
         self._on_wakeup = Subject()
         self.scheduler = ThreadScheduler()
@@ -16,13 +15,10 @@ class UserBehavior(object):
         self._online = True
         self._user_status = 'online'
 
-        self.client_behavior_data = client_behavior_data
         self.discord_client = None
 
     async def action(self):
-        data = self.client_behavior_data
         while True:
-            print(data)
             self.discord_client.change_presence(status='idle')
             print('yoo')
             await sleep(5)

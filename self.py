@@ -1,16 +1,10 @@
+from data.config import TRAINER_ACTIONS, TRAINER_TOKEN
 from core.client import Client
 
 
-
 def main():
-
-    print(
-        "\n +--------------------------------------------+"
-        "\n |        Sniper Giraffe - Bot Farmer         |"
-        "\n |         (c) 2019 Revolver Chicken          |"
-        "\n +--------------------------------------------+\n"
-    )
-    login(my_token, 0)
+    c = Client(TRAINER_ACTIONS)
+    c.run(TRAINER_TOKEN, bot=False)
 
 
 if __name__ == '__main__':

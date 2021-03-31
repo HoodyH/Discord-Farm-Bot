@@ -1,5 +1,4 @@
 from asyncio import (get_event_loop, set_event_loop, sleep, new_event_loop)
-from core.utils.log import Log
 from threading import Thread
 
 

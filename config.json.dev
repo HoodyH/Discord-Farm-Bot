@@ -1,7 +1,16 @@
 {
   "trainer": {
     "token": "",
-    "username": ""
+    "username": "",
+    "behavior": {}
   },
-  "slaves": []
+  "slaves": [
+    {
+      "token": "",
+      "username": "",
+      "actions": []
+    }
+  ],
+  "allowed_ids": ["", ""],
+  "log_channel": 1
 }
