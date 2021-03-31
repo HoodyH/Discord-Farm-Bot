@@ -1,5 +1,5 @@
 from threading import Thread
-from core.client import MyClient
+from core.client import Client
 from asyncio import (get_event_loop)
 from data.bot_secret import my_token
 from data.data import actions_data
@@ -19,9 +19,9 @@ def run_it_forever(loop):
     loop.run_forever()
 
 
-def log_user(token, i):
+def login(token, i):
 
-    clients.append(MyClient(client_behavior, actions_data))
+    clients.append(Client(client_behavior, actions_data))
     clients_loop.append(get_event_loop())
     clients_loop[i].create_task(start(clients[i], token))
     clients_thread.append(Thread(target=run_it_forever, args=(clients_loop[i],)))
@@ -36,7 +36,7 @@ def main():
         "\n |         (c) 2019 Revolver Chicken          |"
         "\n +--------------------------------------------+\n"
     )
-    log_user(my_token, 0)
+    login(my_token, 0)
 
 
 if __name__ == '__main__':

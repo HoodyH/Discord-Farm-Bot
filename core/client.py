@@ -1,15 +1,15 @@
-from discord import Client
+from discord import Client as DiscordClient
 from core.modules.scheduler import ThreadScheduler
-from core.routine.user_behavior import UserBehavior
-from core.routine.auto_farmer import AutoFarmer
+from core.routine.behavior import UserBehavior
+from core.routine.action import AutoAction
 from core.utils.log import Log
 from data.bot_secret import b_user_id, trainer_id
 
 
-class MyClient(Client):
+class Client(DiscordClient):
 
     def __init__(self, client_behavior_data, actions_data):
-        super(MyClient, self).__init__()
+        super(Client, self).__init__()
 
         self.user_id = None
         self._report_channel = None
@@ -51,7 +51,7 @@ class MyClient(Client):
                             channels.append(self.get_channel(channel_id))
 
                         for channel in channels:
-                            auto_farmer = AutoFarmer(self.user, action_data)
+                            auto_farmer = AutoAction(self.user, action_data)
                             self.auto_farmers.append(auto_farmer)
 
                             await self.scheduler.start_loop(

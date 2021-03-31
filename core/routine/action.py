@@ -3,7 +3,7 @@ from asyncio import (sleep)
 from random import (randrange, choices)
 
 
-class AutoFarmer(object):
+class AutoAction(object):
 
     def __init__(self, user, farmer_data):
         self.user = user

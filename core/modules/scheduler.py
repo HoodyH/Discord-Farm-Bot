@@ -11,8 +11,6 @@ class Scheduler(object):
     @staticmethod
     async def sleep():
         while True:
-            # discord_client.change_presence(status='invisible')
-            print('yoo')
             await sleep(5)
 
     async def start_loop(self, action):
