@@ -1,8 +1,22 @@
 {
   "trainer": {
-    "token": "",
+    "id": 222222,
+    "token": "...",
     "username": "",
-    "behavior": {}
+    "behavior": {},
+    "actions": [
+      {
+        "trigger": "start",
+        "channels":[222222],
+        "loop_time": 1800,
+        "loop_range_time": [280, 600],
+        "start_range_time": [20, 60],
+        "execution_probability": 1,
+        "sequence": [
+          {"message": "ok"}
+        ]
+      }
+    ]
   },
   "slaves": [
     {
@@ -11,6 +25,6 @@
       "actions": []
     }
   ],
-  "allowed_ids": ["", ""],
-  "log_channel": 1
+  "allowed_ids": [222222],
+  "log_channel": 222222
 }

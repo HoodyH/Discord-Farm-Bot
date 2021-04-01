@@ -1,29 +1,46 @@
+from typing import Tuple, List
 from core.utils.log import Log
 from asyncio import (sleep)
 from random import (randrange, choices)
 
 
+class ActionData:
+
+    class SequenceItem:
+
+        def __init__(self, sequence_item_raw):
+            self.message: str = sequence_item_raw.get('message')
+
+    def __init__(self, action_raw):
+        self._action_raw = action_raw
+
+        self.trigger: str = action_raw.get('trigger')
+        self.channels: list = action_raw.get('channels')
+
+        self.loop_time: int = action_raw.get('loop_time', 1800)
+        self.loop_range_time: Tuple[int, int] = tuple(action_raw.get('loop_range_time', (120, 600)))
+        self.start_range_time: Tuple[int, int] = tuple(action_raw.get('start_range_time', (20, 60)))
+        self.execution_probability: int = action_raw.get('execution_probability', 1)
+
+        self.sequence: List[ActionData.SequenceItem] = []
+        sequences_raw = action_raw.get('sequence', [])
+
+        for sequence_item_raw in sequences_raw:
+            self.sequence.append(ActionData.SequenceItem(sequence_item_raw))
+
+
 class AutoAction(object):
 
-    def __init__(self, user, farmer_data):
+    def __init__(self, user, action_data: ActionData):
         self.user = user
-        self.farmer_data = farmer_data
+        self.action_data = action_data
+
         self.__stop_action = False
         self.__pause_action = False
 
-    @staticmethod
-    def _true_false(true_p):
-        population = [True, False]
-        weights = [true_p, 1 - true_p]
-        choice = choices(population, weights)
-        return choice[0]
-
-    def _generate_time_action(self, is_first=False):
+    def _generate_time_action(self, is_first=False) -> List[Tuple[str, int]]:
 
         time_actions = []
-        loop_time = self.farmer_data.get('loop_time', 10)
-
-        key_counter = 0
         total_time = 0
         """
         The 0 key in the farmer_data is consider as init point, 
@@ -36,40 +53,33 @@ class AutoAction(object):
         The time of this action should not exceed the total loop time.
         If you exceed the loop time the loop will become more longer then expected.
         """
-        action_data = self.farmer_data.get(key_counter)
-        while action_data is not None:
-
-            message = action_data.get('message', 'mmh...')
-            execution_probability = action_data.get('execution_probability', 1)
+        for idx, sequence_item in enumerate(self.action_data.sequence):
 
             # on the first call the loop will kick in fast
-            if is_first and (key_counter is 0):
-                do_after_time = [2, 8]
+            if is_first and idx == 0:
+                range_min, range_max = self.action_data.start_range_time
             else:
-                do_after_time = action_data.get('do_after_time', [2, 10])
+                range_min, range_max = self.action_data.loop_range_time
 
             # do this action based on execution_probability given
-            do_action = self._true_false(execution_probability)
+            probability = self.action_data.execution_probability
+            do_action = choices([True, False], [probability, 1 - probability])[0]
             if do_action:
-                t = randrange(do_after_time[0], do_after_time[1])
-                if key_counter is not 0:
-                    total_time += t
-                time_actions.append((message, t))
-
-            key_counter += 1
-            action_data = self.farmer_data.get(key_counter)
+                t = randrange(range_min, range_max)
+                total_time += t
+                time_actions.append((sequence_item.message, t))
 
         """
         If the actions have not reached the loop time in total_time this section will add the remaining time
         for match the loop time given. If the actions exceed the loop time this value will be 0.
         """
-        remaining_time = loop_time - total_time
+        remaining_time = self.action_data.loop_time - total_time
         if remaining_time > 0:
             time_actions.append((None, remaining_time))
 
         Log.print_action_log(
             self.user,
-            'calculate the loop for this task: "{}"'.format(time_actions)
+            'calculated the loop for this task: "{}"'.format(time_actions)
         )
         return time_actions
 
@@ -86,23 +96,28 @@ class AutoAction(object):
             if not self.__pause_action:
 
                 time_actions = self._generate_time_action(is_first=first_loop)
-                await report_channel.send(time_actions)
 
-                typing_time = 0
+                action_log = 'calculated the loop for this task: "{}"'.format(time_actions)
+                Log.print_action_log(self.user, action_log)
+                await report_channel.send(Log.get_action_log(self.user, action_log))
+
                 for action, time in time_actions:
+
+                    typing_time = 0
+                    if action:
+                        typing_time = int(len(action) / 15)
+
                     await sleep(time - typing_time)  # time in seconds to send the command
 
-                    if action:
-                        typing_time = 1
+                    if action and not self.__pause_action:
                         await channel.trigger_typing()
                         await sleep(typing_time)
                         await channel.send(action)
-                        Log.print_action_log(
-                            self.user,
-                            'sent message: "{}" in location: "{}"'.format(action, 'channel')
-                        )
-                    else:
-                        typing_time = 0
+
+                        message_log = f'sent message: "{action}" in location: "{channel}"'
+                        Log.print_action_log(self.user, message_log)
+                        await report_channel.send(Log.get_action_log(self.user, message_log))
+
                 first_loop = False
 
             else:

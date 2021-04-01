@@ -10,5 +10,6 @@ LOG_CHANNEL = _data.get('log_channel')
 # the main
 _trainer = _data.get('trainer')
 TRAINER_ID = _trainer.get('id')
+ALLOWED_IDS += [TRAINER_ID]
 TRAINER_TOKEN = _trainer.get('token')
 TRAINER_ACTIONS = _trainer.get('actions', {})

@@ -1,23 +1,22 @@
 from discord import Client as DiscordClient
-from core.modules.scheduler import ThreadScheduler
+from core.modules.scheduler import Scheduler
 from core.routine.behavior import UserBehavior
-from core.routine.action import AutoAction
+from core.routine.action import AutoAction, ActionData
 from core.utils.log import Log
 from data.config import ALLOWED_IDS, TRAINER_ID, LOG_CHANNEL
 
 
 class Client(DiscordClient):
 
-    def __init__(self, actions_data: dict):
+    def __init__(self, actions_raw: dict):
         super(Client, self).__init__()
 
         self.user_id = None
-        self.ignore_updates = False
 
-        self.scheduler = ThreadScheduler()
-        self.client_behavior = UserBehavior()
-        self.actions_data = actions_data
+        self.actions_raw = actions_raw
         self.actions = []
+
+        self.scheduler = Scheduler()
 
         self._report_channel = None
 
@@ -36,30 +35,32 @@ class Client(DiscordClient):
 
         self._report_channel = self.get_channel(LOG_CHANNEL)
 
-        await self.client_behavior.start_cycle(self)
-
     async def on_message(self, message):
 
         if message.author.id in ALLOWED_IDS:
 
             if message.author.id == self.user_id:
-                for key in self.actions_data.keys():
-                    if message.content.startswith(key):
-                        action_data = self.actions_data.get(key)
+                for action_raw in self.actions_raw:
 
+                    action_data = ActionData(action_raw)
+                    trigger = action_data.trigger
+
+                    if message.content.startswith(trigger):
                         channels = []
-                        for channel_id in action_data.get('channels_id'):
+                        for channel_id in action_data.channels:
                             channels.append(self.get_channel(channel_id))
 
                         for channel in channels:
-                            auto_farmer = AutoAction(self.user, action_data)
-                            self.actions.append(auto_farmer)
+                            action = AutoAction(self.user, action_data)
+                            self.actions.append(action)
 
                             await self.scheduler.start_loop(
-                                await auto_farmer.start_loop(channel, self._report_channel)
+                                await action.start_loop(channel, self._report_channel)
                             )
 
-            if message.content.startswith('save_channel'):
+            reactions = [':one:', 'two', ':three:']
+
+            if message.content.startswith('save channel'):
                 self._report_channel = message.channel
                 await message.channel.send('ok, saved')
 

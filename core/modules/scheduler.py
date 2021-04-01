@@ -2,7 +2,7 @@ from asyncio import (get_event_loop, set_event_loop, sleep, new_event_loop)
 from threading import Thread
 
 
-class Scheduler(object):
+class Scheduler:
 
     def __init__(self):
         self.loops = []
@@ -23,7 +23,7 @@ class Scheduler(object):
             pass
 
 
-class ThreadScheduler(object):
+class ThreadScheduler:
 
     def __init__(self):
         self.threads = []

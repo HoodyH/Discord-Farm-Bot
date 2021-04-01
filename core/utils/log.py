@@ -1,18 +1,24 @@
 from datetime import datetime
 
 
-class Log(object):
+class Log:
+
+    @staticmethod
+    def get_ready_log(user):
+        return f'| Client successfully connected as:\n' \
+               f'| Username: {user.name}\n| ID: {user.id}\n' \
+               f'-----------------------------------------'
+
+    @staticmethod
+    def get_action_log(user, action):
+        return f'| User {user.name}[{user.id}] at {str(datetime.now()).split(".")[0]}\n' \
+               f'| He has {action}\n' \
+               f'+-----------------------------------------'
 
     @staticmethod
     def print_on_ready(user):
-        print("+-----------------------------------------")
-        print("| Client successfully connected as:")
-        print("| Username: {0.name}\n| ID: {0.id}".format(user))
-        print("+-----------------------------------------")
+        print(Log.get_ready_log(user))
 
     @staticmethod
     def print_action_log(user, action):
-        print("+-----------------------------------------")
-        print("| User {}[{}] at {}".format(user.name, user.id, str(datetime.now()).split(".")[0]))
-        print("| He has {}".format(action))
-        print("+-----------------------------------------")
+        print(Log.get_action_log(user, action))

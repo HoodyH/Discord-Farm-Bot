@@ -3,11 +3,11 @@ from core.modules.scheduler import ThreadScheduler, Scheduler
 from asyncio import sleep
 
 
-class UserBehavior(object):
+class UserBehavior:
     """
     Define the Behavior of the user, when go to sleep, when wakeup, when is busy for work etc
     """
-    def __init__(self):
+    def __init__(self, discord_client):
 
         self._on_wakeup = Subject()
         self.scheduler = ThreadScheduler()
@@ -15,16 +15,14 @@ class UserBehavior(object):
         self._online = True
         self._user_status = 'online'
 
-        self.discord_client = None
+        self.discord_client = discord_client
 
     async def action(self):
         while True:
             self.discord_client.change_presence(status='idle')
-            print('yoo')
             await sleep(5)
 
-    async def start_cycle(self, discord_client):
-        self.discord_client = discord_client
+    async def start(self):
         await self.discord_client.change_presence(status='idle')
         # await self.scheduler.start_loop(self.action)
 
