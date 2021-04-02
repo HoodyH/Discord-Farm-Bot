@@ -1,4 +1,4 @@
-from data.config import TRAINER_ACTIONS, TRAINER_TOKEN
+from data.configs import TRAINER_ACTIONS, TRAINER_TOKEN
 from core.client import Client
 
 

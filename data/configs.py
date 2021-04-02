@@ -7,6 +7,9 @@ with open('config.json', 'r') as file:
 ALLOWED_IDS = _data.get('allowed_id', [])
 LOG_CHANNEL = _data.get('log_channel')
 
+TARGET = _data.get('target')
+ALLOWED_IDS += [TARGET]
+
 # the main
 _trainer = _data.get('trainer')
 TRAINER_ID = _trainer.get('id')

@@ -1,9 +1,11 @@
+import random
 from discord import Client as DiscordClient
+from asyncio import sleep
 from core.modules.scheduler import Scheduler
-from core.routine.behavior import UserBehavior
+
 from core.routine.action import AutoAction, ActionData
 from core.utils.log import Log
-from data.config import ALLOWED_IDS, TRAINER_ID, LOG_CHANNEL
+from data import configs
 
 
 class Client(DiscordClient):
@@ -17,6 +19,7 @@ class Client(DiscordClient):
         self.actions = []
 
         self.scheduler = Scheduler()
+        self.ignore_schedule = False
 
         self._report_channel = None
 
@@ -33,11 +36,11 @@ class Client(DiscordClient):
         self.user_id = self.user.id
         Log.print_on_ready(self.user)
 
-        self._report_channel = self.get_channel(LOG_CHANNEL)
+        self._report_channel = self.get_channel(configs.LOG_CHANNEL)
 
     async def on_message(self, message):
 
-        if message.author.id in ALLOWED_IDS:
+        if message.author.id in configs.ALLOWED_IDS:
 
             if message.author.id == self.user_id:
                 for action_raw in self.actions_raw:
@@ -58,7 +61,19 @@ class Client(DiscordClient):
                                 await action.start_loop(channel, self._report_channel)
                             )
 
-            reactions = [':one:', 'two', ':three:']
+            if message.author.id == configs.TARGET:
+                print(message.content if message.content else message)
+                check_string = 'is dropping'
+                if check_string in message.content:
+                    emojis = ['1️⃣', '2️⃣', '3️⃣']
+                    emote = random.choice(emojis)
+
+                    action_log = f'reacted with "{emote}"'
+                    Log.print_action_log(self.user, action_log)
+                    await self._report_channel.send(Log.get_action_log(self.user, action_log))
+
+                    await sleep(5)
+                    await message.add_reaction(emote)
 
             if message.content.startswith('save channel'):
                 self._report_channel = message.channel
@@ -73,25 +88,24 @@ class Client(DiscordClient):
                 await message.channel.send('ok, resumed')
 
             if message.content.startswith('ignore!'):
-                if self.ignore_updates:
-                    self.ignore_updates = False
+                if self.ignore_schedule:
+                    self.ignore_schedule = False
                     await message.channel.send('farmer now based on feed')
                 else:
-                    self.ignore_updates = True
                     await message.channel.send('Persistent farmer')
 
     async def on_member_update(self, before, after):
 
-        if self.ignore_updates:
+        if self.ignore_schedule:
             return
 
-        if after.id == TRAINER_ID:
+        if after.id == configs.TRAINER_ID:
 
             if str(before.status) != "offline" and str(after.status) == "offline":
                 self._pause_farmers()
-                await self._report_channel.send('trainer has gone OFF paused')
+                await self._report_channel.send('Trainer has gone OFF paused')
             elif str(before.status) != str(after.status):
                 self._resume_farmers()
-                await self._report_channel.send('trainer has gone ON resumed')
+                await self._report_channel.send('Trainer has gone ON resumed')
             else:
                 return
