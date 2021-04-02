@@ -1,10 +1,10 @@
-from data.configs import TRAINER_ACTIONS, TRAINER_TOKEN
+from data.configs import configs
 from core.client import Client
 
 
 def main():
-    c = Client(TRAINER_ACTIONS)
-    c.run(TRAINER_TOKEN, bot=False)
+    c = Client(configs.trainer.actions_raw)
+    c.run(configs.trainer.token, bot=False)
 
 
 if __name__ == '__main__':

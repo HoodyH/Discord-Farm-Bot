@@ -3,16 +3,32 @@ import json
 with open('config.json', 'r') as file:
     _data = json.load(file)
 
-# users ids where messages will be analysed
-ALLOWED_IDS = _data.get('allowed_id', [])
-LOG_CHANNEL = _data.get('log_channel')
 
-TARGET = _data.get('target')
-ALLOWED_IDS += [TARGET]
+class Account:
+    """
+    Obj that rappresents the main user
+    """
+    def __init__(self, data):
+        self.token: str = data.get('token')
+        self.id: int = data.get('id')
+        self.username: int = data.get('username')
+        self.routine_raw: list = data.get('routine', [])
+        self.actions_raw: list = data.get('actions', [])
 
-# the main
-_trainer = _data.get('trainer')
-TRAINER_ID = _trainer.get('id')
-ALLOWED_IDS += [TRAINER_ID]
-TRAINER_TOKEN = _trainer.get('token')
-TRAINER_ACTIONS = _trainer.get('actions', {})
+
+class Configs:
+
+    def __init__(self, config_raw):
+        _trainer = config_raw.get('trainer')
+        self.trainer: Account = Account(_trainer)
+
+        self.global_actions: list = config_raw.get('global_actions', [])
+        self.allowed_ids: list = config_raw.get('allowed_ids', [])
+        self.target_id = config_raw.get('target', [])
+        self.log_channel = config_raw.get('log_channel', [])
+
+        self.allowed_ids.append(self.trainer.id)
+        self.allowed_ids.append(self.target_id)
+
+
+configs = Configs(_data)

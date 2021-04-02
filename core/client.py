@@ -3,9 +3,9 @@ from discord import Client as DiscordClient
 from asyncio import sleep
 from core.modules.scheduler import Scheduler
 
-from core.routine.action import AutoAction, ActionData
+from core.routine.action import ActionExecutor, ActionData
 from core.utils.log import Log
-from data import configs
+from data.configs import configs
 
 
 class Client(DiscordClient):
@@ -36,11 +36,11 @@ class Client(DiscordClient):
         self.user_id = self.user.id
         Log.print_on_ready(self.user)
 
-        self._report_channel = self.get_channel(configs.LOG_CHANNEL)
+        self._report_channel = self.get_channel(configs.log_channel)
 
     async def on_message(self, message):
 
-        if message.author.id in configs.ALLOWED_IDS:
+        if message.author.id in configs.allowed_ids:
 
             if message.author.id == self.user_id:
                 for action_raw in self.actions_raw:
@@ -54,17 +54,17 @@ class Client(DiscordClient):
                             channels.append(self.get_channel(channel_id))
 
                         for channel in channels:
-                            action = AutoAction(self.user, action_data)
+                            action = ActionExecutor(self.user, action_data)
                             self.actions.append(action)
 
                             await self.scheduler.start_loop(
                                 await action.start_loop(channel, self._report_channel)
                             )
 
-            if message.author.id == configs.TARGET:
-                print(message.content if message.content else message)
-                check_string = 'is dropping'
-                if check_string in message.content:
+            if message.author.id == configs.target_id:
+                trainer_mention_admin, trainer_mention = f'<@!{configs.trainer.id}>', f'<@{configs.trainer.id}>'
+                check_string = ' is dropping'
+                if (check_string and (trainer_mention_admin or trainer_mention)) in message.content:
                     emojis = ['1️⃣', '2️⃣', '3️⃣']
                     emote = random.choice(emojis)
 
@@ -72,7 +72,7 @@ class Client(DiscordClient):
                     Log.print_action_log(self.user, action_log)
                     await self._report_channel.send(Log.get_action_log(self.user, action_log))
 
-                    await sleep(5)
+                    await sleep(random.randrange(6, 10))
                     await message.add_reaction(emote)
 
             if message.content.startswith('save channel'):
@@ -99,7 +99,7 @@ class Client(DiscordClient):
         if self.ignore_schedule:
             return
 
-        if after.id == configs.TRAINER_ID:
+        if after.id == configs.trainer.id:
 
             if str(before.status) != "offline" and str(after.status) == "offline":
                 self._pause_farmers()
