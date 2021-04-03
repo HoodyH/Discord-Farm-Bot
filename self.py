@@ -3,7 +3,7 @@ from core.client import Client
 
 
 def main():
-    c = Client(configs.trainer.actions_raw)
+    c = Client(configs.trainer.actions_raw, configs.trainer.routine_raw)
     c.run(configs.trainer.token, bot=False)
 
 

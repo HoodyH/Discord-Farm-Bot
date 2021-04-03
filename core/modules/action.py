@@ -1,11 +1,25 @@
-from typing import Tuple, List
-from core.utils.log import Log
 from asyncio import sleep
-from random import (randrange, choices)
+from core.modules.scheduler import Scheduler
+from core.utils.log import Logger
+from random import randrange, choices
+from typing import Tuple, List
 
 
-class ActionData:
+# get the action trigger
+def get_trigger(action_raw):
+    return action_raw.get('trigger')
 
+
+# get the action trigger
+def get_channels(action_raw):
+    return action_raw.get('channels')
+
+
+class _ActionData:
+    """
+    Create an object with all the data in the raw dict
+    this represent an action
+    """
     class SequenceItem:
 
         def __init__(self, sequence_item_raw):
@@ -32,26 +46,29 @@ class ActionData:
         self.execution_probability: int = action_raw.get('execution_probability', 1)
 
         # each action can have multiple actions, with unique properties
-        self.sequence: List[ActionData.SequenceItem] = []
+        self.sequence: List[_ActionData.SequenceItem] = []
         sequences_raw = action_raw.get('sequence', [])
 
         for sequence_item_raw in sequences_raw:
-            self.sequence.append(ActionData.SequenceItem(sequence_item_raw))
+            self.sequence.append(_ActionData.SequenceItem(sequence_item_raw))
 
 
-class ActionDescriptor:
-
+class _ActionDescriptor:
+    """
+    Data of the action that have to be executed
+    """
     def __init__(self):
         self.message = ''
         self.typing_time = 0
         self.total_time = 0
 
 
-class ActionExecutor:
+class _ActionExecutor:
 
-    def __init__(self, user, action_data: ActionData):
-        self.user = user
-        self.action_data = action_data
+    def __init__(self, action_data: _ActionData, logger):
+        self.action_data: _ActionData = action_data
+
+        self.logger: Logger = logger
 
         self.__stop_action = False
         self.__pause_action = False
@@ -101,7 +118,7 @@ class ActionExecutor:
 
         return time_actions
 
-    async def start_loop(self, channel, report_channel):
+    async def start_loop(self, channel):
 
         self.__stop_action = False
         # on the first call the loop will kick in fast
@@ -115,9 +132,7 @@ class ActionExecutor:
 
                 time_actions = self._generate_time_action(is_first=first_loop)
 
-                action_log = 'calculated the loop for this task: "{}"'.format(time_actions)
-                Log.print_action_log(self.user, action_log)
-                await report_channel.send(Log.get_action_log(self.user, action_log))
+                await self.logger.log_action(f'calculated the loop for this task: "{time_actions}"')
 
                 for action, typing_time, time in time_actions:
 
@@ -128,9 +143,7 @@ class ActionExecutor:
                         await sleep(typing_time)
                         await channel.send(action)
 
-                        message_log = f'sent message: "{action}" in location: "{channel}"'
-                        Log.print_action_log(self.user, message_log)
-                        await report_channel.send(Log.get_action_log(self.user, message_log))
+                        await self.logger.log_action(f'sent message: "{action}" in location: "{channel}"')
 
                 first_loop = False
 
@@ -146,3 +159,28 @@ class ActionExecutor:
 
     def resume_loop(self):
         self.__pause_action = False
+
+
+class ActionsManager:
+
+    def __init__(self, actions_raw):
+        self.actions_raw = actions_raw
+        self.actions: List[_ActionExecutor] = []
+
+        self.scheduler = Scheduler()
+
+    async def create(self, channel, data: dict, logger):
+        action_data = _ActionData(data)
+        action = _ActionExecutor(action_data, logger)
+        self.actions.append(action)
+        await self.scheduler.start_loop(
+            await action.start_loop(channel)
+        )
+
+    def pause(self):
+        for action in self.actions:
+            action.pause_loop()
+
+    def resume(self):
+        for action in self.actions:
+            action.resume_loop()

@@ -1,64 +1,54 @@
 import random
 from discord import Client as DiscordClient
+from discord import Game, Status
 from asyncio import sleep
-from core.modules.scheduler import Scheduler
-
-from core.routine.action import ActionExecutor, ActionData
-from core.utils.log import Log
+from core.modules.routine import Observer, RoutineManager
+from core.modules.action import get_trigger, get_channels
+from core.modules.action import ActionsManager
+from core.utils.log import Logger
 from data.configs import configs
 
 
-class Client(DiscordClient):
+class Client(DiscordClient, Observer):
 
-    def __init__(self, actions_raw: dict):
+    def __init__(self, actions_raw: dict, routine_raw: dict):
         super(Client, self).__init__()
 
-        self.user_id = None
+        self.actions = ActionsManager(actions_raw)
+        self.routine = RoutineManager(routine_raw)
 
-        self.actions_raw = actions_raw
-        self.actions = []
+        self.logger = Logger()
 
-        self.scheduler = Scheduler()
-        self.ignore_schedule = False
-
-        self._report_channel = None
-
-    def _pause_farmers(self):
-        for auto_farmer in self.actions:
-            auto_farmer.pause_loop()
-
-    def _resume_farmers(self):
-        for auto_farmer in self.actions:
-            auto_farmer.resume_loop()
+    async def routine_update(self, is_online: bool) -> None:
+        if is_online:
+            # await self.change_presence(status=Status.do_not_disturb, activity=Game('dunno'))
+            self.actions.resume()
+        else:
+            # await self.change_presence(status=Status.do_not_disturb, afk=True, activity=Game('dunno'))
+            self.actions.pause()
 
     async def on_ready(self):
 
-        self.user_id = self.user.id
-        Log.print_on_ready(self.user)
+        self.logger.channel = self.get_channel(configs.log_channel)
+        self.logger.user = self.user
+        await self.logger.log_on_ready()
 
-        self._report_channel = self.get_channel(configs.log_channel)
+        # subscribe yourself to your routine
+        await self.routine.subscribe(self)
 
     async def on_message(self, message):
 
         if message.author.id in configs.allowed_ids:
 
-            if message.author.id == self.user_id:
-                for action_raw in self.actions_raw:
+            if message.author.id == configs.trainer.id:
+                for action_raw in self.actions.actions_raw:
 
-                    action_data = ActionData(action_raw)
-                    trigger = action_data.trigger
-
-                    if message.content.startswith(trigger):
-                        channels = []
-                        for channel_id in action_data.channels:
-                            channels.append(self.get_channel(channel_id))
-
-                        for channel in channels:
-                            action = ActionExecutor(self.user, action_data)
-                            self.actions.append(action)
-
-                            await self.scheduler.start_loop(
-                                await action.start_loop(channel, self._report_channel)
+                    if message.content.startswith(get_trigger(action_raw)):
+                        for channel_id in get_channels(action_raw):
+                            await self.actions.create(
+                                self.get_channel(channel_id),
+                                action_raw,
+                                self.logger
                             )
 
             if message.author.id == configs.target_id:
@@ -69,43 +59,43 @@ class Client(DiscordClient):
                     emote = random.choice(emojis)
 
                     action_log = f'reacted with "{emote}"'
-                    Log.print_action_log(self.user, action_log)
-                    await self._report_channel.send(Log.get_action_log(self.user, action_log))
+                    await self.logger.log_action(action_log)
 
                     await sleep(random.randrange(6, 10))
                     await message.add_reaction(emote)
 
             if message.content.startswith('save channel'):
-                self._report_channel = message.channel
+                self.logger.channel = message.channel
                 await message.channel.send('ok, saved')
 
             if message.content.startswith('pause!'):
-                self._pause_farmers()
+                self.actions.pause()
                 await message.channel.send('ok, paused')
 
             if message.content.startswith('resume!'):
-                self._resume_farmers()
+                self.actions.resume()
                 await message.channel.send('ok, resumed')
 
             if message.content.startswith('ignore!'):
-                if self.ignore_schedule:
-                    self.ignore_schedule = False
-                    await message.channel.send('farmer now based on feed')
+                self.routine.follow_trainer_routine = not self.routine.follow_trainer_routine
+                if self.routine.follow_trainer_routine:
+                    await message.channel.send('farmer now based on trainer')
                 else:
                     await message.channel.send('Persistent farmer')
 
     async def on_member_update(self, before, after):
 
-        if self.ignore_schedule:
+        if self.routine.follow_trainer_routine:
             return
 
+        # if the trainer user goes off disable all the workers
         if after.id == configs.trainer.id:
 
             if str(before.status) != "offline" and str(after.status) == "offline":
-                self._pause_farmers()
-                await self._report_channel.send('Trainer has gone OFF paused')
+                self.actions.pause()
+                await self.logger.log_action('Trainer has gone OFF paused')
             elif str(before.status) != str(after.status):
-                self._resume_farmers()
-                await self._report_channel.send('Trainer has gone ON resumed')
+                self.actions.resume()
+                await self.logger.log_action('Trainer has gone ON resumed')
             else:
                 return
