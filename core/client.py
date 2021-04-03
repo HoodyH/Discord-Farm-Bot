@@ -1,96 +1,101 @@
+import random
 from discord import Client as DiscordClient
-from core.modules.scheduler import ThreadScheduler
-from core.routine.behavior import UserBehavior
-from core.routine.action import AutoAction
-from core.utils.log import Log
-from data.config import ALLOWED_IDS, TRAINER_ID, LOG_CHANNEL
+from discord import Game, Status
+from asyncio import sleep
+from core.modules.routine import Observer, RoutineManager
+from core.modules.action import get_trigger, get_channels
+from core.modules.action import ActionsManager
+from core.utils.log import Logger
+from data.configs import configs
 
 
-class Client(DiscordClient):
+class Client(DiscordClient, Observer):
 
-    def __init__(self, actions_data: dict):
+    def __init__(self, actions_raw: dict, routine_raw: dict):
         super(Client, self).__init__()
 
-        self.user_id = None
-        self.ignore_updates = False
+        self.actions = ActionsManager(actions_raw)
+        self.routine = RoutineManager(routine_raw)
 
-        self.scheduler = ThreadScheduler()
-        self.client_behavior = UserBehavior()
-        self.actions_data = actions_data
-        self.actions = []
+        self.logger = Logger()
 
-        self._report_channel = None
-
-    def _pause_farmers(self):
-        for auto_farmer in self.actions:
-            auto_farmer.pause_loop()
-
-    def _resume_farmers(self):
-        for auto_farmer in self.actions:
-            auto_farmer.resume_loop()
+    async def routine_update(self, is_online: bool) -> None:
+        if is_online:
+            # await self.change_presence(status=Status.do_not_disturb, activity=Game('dunno'))
+            self.actions.resume()
+        else:
+            # await self.change_presence(status=Status.do_not_disturb, afk=True, activity=Game('dunno'))
+            self.actions.pause()
 
     async def on_ready(self):
 
-        self.user_id = self.user.id
-        Log.print_on_ready(self.user)
+        self.logger.channel = self.get_channel(configs.log_channel)
+        self.logger.user = self.user
+        await self.logger.log_on_ready()
 
-        self._report_channel = self.get_channel(LOG_CHANNEL)
-
-        await self.client_behavior.start_cycle(self)
+        # subscribe yourself to your routine
+        await self.routine.subscribe(self)
 
     async def on_message(self, message):
 
-        if message.author.id in ALLOWED_IDS:
+        if message.author.id in configs.allowed_ids:
 
-            if message.author.id == self.user_id:
-                for key in self.actions_data.keys():
-                    if message.content.startswith(key):
-                        action_data = self.actions_data.get(key)
+            if message.author.id == configs.trainer.id:
+                for action_raw in self.actions.actions_raw:
 
-                        channels = []
-                        for channel_id in action_data.get('channels_id'):
-                            channels.append(self.get_channel(channel_id))
-
-                        for channel in channels:
-                            auto_farmer = AutoAction(self.user, action_data)
-                            self.actions.append(auto_farmer)
-
-                            await self.scheduler.start_loop(
-                                await auto_farmer.start_loop(channel, self._report_channel)
+                    if message.content.startswith(get_trigger(action_raw)):
+                        for channel_id in get_channels(action_raw):
+                            await self.actions.create(
+                                self.get_channel(channel_id),
+                                action_raw,
+                                self.logger
                             )
 
-            if message.content.startswith('save_channel'):
-                self._report_channel = message.channel
+            if message.author.id == configs.target_id:
+                trainer_mention_admin, trainer_mention = f'<@!{configs.trainer.id}>', f'<@{configs.trainer.id}>'
+                check_string = ' is dropping'
+                if (check_string and (trainer_mention_admin or trainer_mention)) in message.content:
+                    emojis = ['1️⃣', '2️⃣', '3️⃣']
+                    emote = random.choice(emojis)
+
+                    action_log = f'reacted with "{emote}"'
+                    await self.logger.log_action(action_log)
+
+                    await sleep(random.randrange(6, 10))
+                    await message.add_reaction(emote)
+
+            if message.content.startswith('save channel'):
+                self.logger.channel = message.channel
                 await message.channel.send('ok, saved')
 
             if message.content.startswith('pause!'):
-                self._pause_farmers()
+                self.actions.pause()
                 await message.channel.send('ok, paused')
 
             if message.content.startswith('resume!'):
-                self._resume_farmers()
+                self.actions.resume()
                 await message.channel.send('ok, resumed')
 
             if message.content.startswith('ignore!'):
-                if self.ignore_updates:
-                    self.ignore_updates = False
-                    await message.channel.send('farmer now based on feed')
+                self.routine.follow_trainer_routine = not self.routine.follow_trainer_routine
+                if self.routine.follow_trainer_routine:
+                    await message.channel.send('farmer now based on trainer')
                 else:
-                    self.ignore_updates = True
                     await message.channel.send('Persistent farmer')
 
     async def on_member_update(self, before, after):
 
-        if self.ignore_updates:
+        if self.routine.follow_trainer_routine:
             return
 
-        if after.id == TRAINER_ID:
+        # if the trainer user goes off disable all the workers
+        if after.id == configs.trainer.id:
 
             if str(before.status) != "offline" and str(after.status) == "offline":
-                self._pause_farmers()
-                await self._report_channel.send('trainer has gone OFF paused')
+                self.actions.pause()
+                await self.logger.log_action('Trainer has gone OFF paused')
             elif str(before.status) != str(after.status):
-                self._resume_farmers()
-                await self._report_channel.send('trainer has gone ON resumed')
+                self.actions.resume()
+                await self.logger.log_action('Trainer has gone ON resumed')
             else:
                 return

@@ -1,18 +1,31 @@
 from datetime import datetime
+from discord import TextChannel, User
 
 
-class Log(object):
+class Logger:
+    """
+    Action logger specific for each user
+    """
+    def __init__(self):
+        self.channel = None  # discord channel
+        self.user = None  # discord obj that represent the user
 
     @staticmethod
-    def print_on_ready(user):
-        print("+-----------------------------------------")
-        print("| Client successfully connected as:")
-        print("| Username: {0.name}\n| ID: {0.id}".format(user))
-        print("+-----------------------------------------")
+    def get_ready_log(user):
+        return f'\nClient successfully connected as:\n' \
+               f'Username: {user.name}\nID: {user.id}\n'
 
     @staticmethod
-    def print_action_log(user, action):
-        print("+-----------------------------------------")
-        print("| User {}[{}] at {}".format(user.name, user.id, str(datetime.now()).split(".")[0]))
-        print("| He has {}".format(action))
-        print("+-----------------------------------------")
+    def get_action_log(user, action):
+        return f'\nUser {user.name}[{user.id}] at {str(datetime.now()).split(".")[0]}\n' \
+               f'He has {action}\n'
+
+    async def log_on_ready(self):
+        action_log = Logger.get_ready_log(self.user)
+        print(action_log)
+        await self.channel.send(action_log)
+
+    async def log_action(self, action):
+        action_log = Logger.get_action_log(self.user, action)
+        print(action_log)
+        await self.channel.send(action_log)
