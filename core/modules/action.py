@@ -35,6 +35,9 @@ class _ActionData:
         # channels where the messages will be sent
         self.channels: list = action_raw.get('channels')
 
+        # This action will not be affected by pause and resume
+        self.run_always = action_raw.get('run_always', False)
+
         # loop_time: time of the full action loop,
         # loop_range_time: is to avoid execution pragmatically,
         # start_range_time: is the fist execucion times
@@ -66,7 +69,7 @@ class _ActionDescriptor:
 class _ActionExecutor:
 
     def __init__(self, action_data: _ActionData, logger):
-        self.action_data: _ActionData = action_data
+        self.data: _ActionData = action_data
 
         self.logger: Logger = logger
 
@@ -82,8 +85,8 @@ class _ActionExecutor:
             return choices([True, False], [probability, 1 - probability])[0]
 
         # this action dont have to be executed on this loop, return a waiting action
-        if not do_action(self.action_data.execution_probability):
-            return [('', 0, self.action_data.loop_time)]
+        if not do_action(self.data.execution_probability):
+            return [('', 0, self.data.loop_time)]
         """
         
         After that the loop will get and create all the actions after the init point, 
@@ -92,14 +95,14 @@ class _ActionExecutor:
         The time of this action should not exceed the total loop time.
         If you exceed the loop time the loop will become more longer then expected.
         """
-        for idx, sequence_item in enumerate(self.action_data.sequence):
+        for idx, sequence_item in enumerate(self.data.sequence):
 
             # on the first call the loop will kick in faster or slower
             # based on the start_range_time, all others loops will be calculated on loop_range_time
             if is_first and idx == 0:
-                range_min, range_max = self.action_data.start_range_time
+                range_min, range_max = self.data.start_range_time
             else:
-                range_min, range_max = self.action_data.loop_range_time
+                range_min, range_max = self.data.loop_range_time
 
             # do this action based on execution_probability given in the single sequence_item
             if do_action(sequence_item.execution_probability):
@@ -112,7 +115,7 @@ class _ActionExecutor:
         If the actions have not reached the loop time in total_time this section will add the remaining time
         for match the loop time given. If the actions exceed the loop time this value will be 0.
         """
-        remaining_time = self.action_data.loop_time - total_time
+        remaining_time = self.data.loop_time - total_time
         if remaining_time > 0:
             time_actions.append(('', 0, remaining_time))
 
@@ -154,11 +157,13 @@ class _ActionExecutor:
     def stop_loop(self):
         self.__stop_action = True
 
-    def pause_loop(self):
-        self.__pause_action = True
+    def pause_loop(self, force: bool):
+        if not self.data.run_always or force:
+            self.__pause_action = True
 
-    def resume_loop(self):
-        self.__pause_action = False
+    def resume_loop(self, force: bool):
+        if not self.data.run_always or force:
+            self.__pause_action = False
 
 
 class ActionsManager:
@@ -177,10 +182,10 @@ class ActionsManager:
             await action.start_loop(channel)
         )
 
-    def pause(self):
+    def pause(self, force=False):
         for action in self.actions:
-            action.pause_loop()
+            action.pause_loop(force)
 
-    def resume(self):
+    def resume(self, force=False):
         for action in self.actions:
-            action.resume_loop()
+            action.resume_loop(force)

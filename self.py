@@ -1,6 +1,8 @@
 from data.configs import configs
 from core.client import Client
 
+from core.modules.routine import RoutineManager
+
 
 def main():
     c = Client(configs.trainer.actions_raw, configs.trainer.routine_raw)

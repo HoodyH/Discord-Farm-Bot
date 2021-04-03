@@ -14,10 +14,10 @@ class Client(DiscordClient, Observer):
     def __init__(self, actions_raw: dict, routine_raw: dict):
         super(Client, self).__init__()
 
-        self.actions = ActionsManager(actions_raw)
-        self.routine = RoutineManager(routine_raw)
-
         self.logger = Logger()
+
+        self.actions = ActionsManager(actions_raw)
+        self.routine = RoutineManager(routine_raw, self.logger)
 
     async def routine_update(self, is_online: bool) -> None:
         if is_online:
