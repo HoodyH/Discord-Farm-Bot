@@ -64,19 +64,19 @@ class Client(DiscordClient, Observer):
                     await sleep(random.randrange(6, 10))
                     await message.add_reaction(emote)
 
-            if message.content.startswith('save channel'):
+            if message.content.startswith('..log'):
                 self.logger.channel = message.channel
                 await message.channel.send('ok, saved')
 
-            if message.content.startswith('pause!'):
+            if message.content.startswith('..pause'):
                 self.actions.pause()
                 await message.channel.send('ok, paused')
 
-            if message.content.startswith('resume!'):
+            if message.content.startswith('..resume'):
                 self.actions.resume()
                 await message.channel.send('ok, resumed')
 
-            if message.content.startswith('ignore!'):
+            if message.content.startswith('..ignore'):
                 self.routine.follow_trainer_routine = not self.routine.follow_trainer_routine
                 if self.routine.follow_trainer_routine:
                     await message.channel.send('farmer now based on trainer')
