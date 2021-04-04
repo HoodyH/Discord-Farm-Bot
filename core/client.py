@@ -1,3 +1,5 @@
+import io
+import os
 import random
 from discord import Client as DiscordClient
 from discord import Game, Status
@@ -6,6 +8,7 @@ from asyncio import sleep
 from core.modules.routine import Observer, RoutineManager
 from core.modules.action import get_trigger, get_channels
 from core.modules.action import ActionsManager
+from core.utils.download import valid_image_url, download_image
 from core.utils.log import Logger
 from data.configs import configs
 
@@ -63,14 +66,21 @@ class Client(DiscordClient, Observer):
         except IndexError:
             mentioned_user = 0
 
-        if message.author.id == configs.target_id and mentioned_user == configs.trainer.id:
-            if 'is dropping' in message.content:
-                drop = Drop(message.content)
-                emote = drop.get_reaction()
-                await self.logger.log_action(f'reacted with "{emote}"')
+        if message.author.id == configs.target_id:  # and mentioned_user == configs.trainer.id:
+            # if 'is dropping' in message.content:
 
-                await sleep(random.randrange(6, 10))
-                await message.add_reaction(emote)
+            # download the attachments
+            file = io.BytesIO()
+            for attachment in message.attachments:
+                if valid_image_url(attachment.url):
+                    await attachment.save(file)
+
+            drop = Drop(message.content, file)
+            emote = drop.get_reaction()
+            await self.logger.log_action(f'reacted with "{emote}"')
+
+            await sleep(random.randrange(6, 12))
+            await message.add_reaction(emote)
 
         if message.content.startswith('..log'):
             self.logger.channel = message.channel

@@ -23,8 +23,13 @@ class Card:
 
 class Drop:
 
-    def __init__(self, message):
+    def __init__(self, message, file):
         self.drop_dimension = message[34:35]
+        self.file = file
+
+        with open("images/file.png", 'wb') as f:
+            f.write(self.file.read())
+
         self.card_data: List[Card] = []
 
     def get_reaction(self):

@@ -66,7 +66,7 @@ class _ActionDescriptor:
         self.message = message
 
     def __repr__(self):
-        return f'{self.total_time}, {self.typing_time}, {self.message}'
+        return f'(sleep:{self.total_time}, type:{self.typing_time}, mex:{self.message})'
 
 
 class _ActionExecutor:
@@ -125,7 +125,7 @@ class _ActionExecutor:
         """
         remaining_time = self.data.loop_time - total_time
         if remaining_time > 0:
-            time_actions.append((remaining_time, 0, ''))
+            time_actions.append(_ActionDescriptor(remaining_time, 0, ''))
 
         return time_actions
 

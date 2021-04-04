@@ -2,6 +2,9 @@ from datetime import datetime
 from discord import TextChannel, User
 
 
+LOG_ON_DISCORD = False
+
+
 class Logger:
     """
     Action logger specific for each user
@@ -23,9 +26,11 @@ class Logger:
     async def log_on_ready(self):
         action_log = Logger.get_ready_log(self.user)
         print(action_log)
-        await self.channel.send(action_log)
+        if LOG_ON_DISCORD:
+            await self.channel.send(action_log)
 
     async def log_action(self, action):
         action_log = Logger.get_action_log(self.user, action)
         print(action_log)
-        await self.channel.send(action_log)
+        if LOG_ON_DISCORD:
+            await self.channel.send(action_log)
