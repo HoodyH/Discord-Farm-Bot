@@ -1,6 +1,7 @@
 import random
 from discord import Client as DiscordClient
 from discord import Game, Status
+from analyzer.karuta.card import Card, Drop
 from asyncio import sleep
 from core.modules.routine import Observer, RoutineManager
 from core.modules.action import get_trigger, get_channels
@@ -56,15 +57,17 @@ class Client(DiscordClient, Observer):
                             self.logger
                         )
 
-        if message.author.id == configs.target_id:
-            trainer_mention_admin, trainer_mention = f'<@!{configs.trainer.id}>', f'<@{configs.trainer.id}>'
-            check_string = ' is dropping'
-            if (check_string and (trainer_mention_admin or trainer_mention)) in message.content:
-                emojis = ['1️⃣', '2️⃣', '3️⃣']
-                emote = random.choice(emojis)
+        # react only to user drops
+        try:
+            mentioned_user = message.mentions[0].id
+        except IndexError:
+            mentioned_user = 0
 
-                action_log = f'reacted with "{emote}"'
-                await self.logger.log_action(action_log)
+        if message.author.id == configs.target_id and mentioned_user == configs.trainer.id:
+            if 'is dropping' in message.content:
+                drop = Drop(message.content)
+                emote = drop.get_reaction()
+                await self.logger.log_action(f'reacted with "{emote}"')
 
                 await sleep(random.randrange(6, 10))
                 await message.add_reaction(emote)

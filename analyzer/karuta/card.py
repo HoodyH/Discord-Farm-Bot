@@ -1,3 +1,4 @@
+import random
 from enum import Enum
 from typing import List
 
@@ -22,6 +23,12 @@ class Card:
 
 class Drop:
 
-    def __init__(self):
-        self.drop_dimension = 3
+    def __init__(self, message):
+        self.drop_dimension = message[34:35]
         self.card_data: List[Card] = []
+
+    def get_reaction(self):
+        emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣']
+        if self.drop_dimension == 3:
+            emojis.pop()
+        return random.choice(emojis)

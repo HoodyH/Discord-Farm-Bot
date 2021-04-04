@@ -40,7 +40,7 @@ class _ActionData:
 
         # loop_time: time of the full action loop,
         # loop_range_time: is to avoid execution pragmatically,
-        # start_range_time: is the fist execucion times
+        # start_range_time: is the fist execution times
         self.loop_time: int = action_raw.get('loop_time', 1800)
         self.loop_range_time: Tuple[int, int] = tuple(action_raw.get('loop_range_time', (120, 600)))
         self.start_range_time: Tuple[int, int] = tuple(action_raw.get('start_range_time', (20, 60)))
@@ -60,10 +60,13 @@ class _ActionDescriptor:
     """
     Data of the action that have to be executed
     """
-    def __init__(self):
-        self.message = ''
-        self.typing_time = 0
-        self.total_time = 0
+    def __init__(self, total_time, typing_time, message):
+        self.total_time = total_time
+        self.typing_time = typing_time
+        self.message = message
+
+    def __repr__(self):
+        return f'{self.total_time}, {self.typing_time}, {self.message}'
 
 
 class _ActionExecutor:
@@ -76,8 +79,15 @@ class _ActionExecutor:
         self.__stop_action = False
         self.__pause_action = False
 
-    def _generate_time_action(self, is_first=False) -> List[Tuple[object, int, int]]:
+    def _generate_time_action(self, is_first=False) -> List[_ActionDescriptor]:
+        """
+        :param is_first: if this is the fist time for this action that the generate_time_action is called
 
+        All the actions are part of the total loop time.
+
+        The time of this action should not exceed the total loop time.
+        If you exceed the loop time the loop will become more longer then expected.
+        """
         time_actions = []
         total_time = 0
 
@@ -86,38 +96,36 @@ class _ActionExecutor:
 
         # this action dont have to be executed on this loop, return a waiting action
         if not do_action(self.data.execution_probability):
-            return [('', 0, self.data.loop_time)]
-        """
-        
-        After that the loop will get and create all the actions after the init point, 
-        this actions are part of the total loop time.
-        
-        The time of this action should not exceed the total loop time.
-        If you exceed the loop time the loop will become more longer then expected.
-        """
-        for idx, sequence_item in enumerate(self.data.sequence):
+            return [_ActionDescriptor(self.data.loop_time, 0, '')]
 
-            # on the first call the loop will kick in faster or slower
-            # based on the start_range_time, all others loops will be calculated on loop_range_time
-            if is_first and idx == 0:
-                range_min, range_max = self.data.start_range_time
-            else:
-                range_min, range_max = self.data.loop_range_time
+        # on the first call the loop will kick in faster or slower
+        # based on the start_range_time, all others loops will be calculated on loop_range_time
+        if is_first:
+            range_min, range_max = self.data.start_range_time
+        else:
+            range_min, range_max = self.data.loop_range_time
+
+        for idx, sequence_item in enumerate(self.data.sequence):
 
             # do this action based on execution_probability given in the single sequence_item
             if do_action(sequence_item.execution_probability):
                 typing_t = int(len(sequence_item.message) / 10) + 1
-                t = randrange(range_min, range_max) - typing_t
+
+                if idx == 0:
+                    t = randrange(range_min, range_max) - typing_t
+                else:
+                    t = randrange(2, 4) - typing_t
+
                 total_time += t
-                time_actions.append((sequence_item.message, typing_t, t))
+                time_actions.append(_ActionDescriptor(t, typing_t, sequence_item.message))
 
         """
-        If the actions have not reached the loop time in total_time this section will add the remaining time
+        If the actions have not reached the loop time in total_time add the remaining time
         for match the loop time given. If the actions exceed the loop time this value will be 0.
         """
         remaining_time = self.data.loop_time - total_time
         if remaining_time > 0:
-            time_actions.append(('', 0, remaining_time))
+            time_actions.append((remaining_time, 0, ''))
 
         return time_actions
 
@@ -137,16 +145,16 @@ class _ActionExecutor:
 
                 await self.logger.log_action(f'calculated the loop for this task: "{time_actions}"')
 
-                for action, typing_time, time in time_actions:
+                for descriptor in time_actions:
 
-                    await sleep(time)  # time in seconds to send the command
+                    await sleep(descriptor.total_time)  # time in seconds to send the command
 
-                    if action and not self.__pause_action:
+                    if descriptor.message and not self.__pause_action:
                         await channel.trigger_typing()
-                        await sleep(typing_time)
-                        await channel.send(action)
+                        await sleep(descriptor.typing_time)
+                        await channel.send(descriptor.message)
 
-                        await self.logger.log_action(f'sent message: "{action}" in location: "{channel}"')
+                        await self.logger.log_action(f'sent message: "{descriptor.message}" in location: "{channel}"')
 
                 first_loop = False
 
