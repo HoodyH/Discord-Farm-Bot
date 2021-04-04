@@ -3,7 +3,7 @@ import os
 import random
 from discord import Client as DiscordClient
 from discord import Game, Status
-from analyzer.karuta.card import Card, Drop
+from analyzer.karuta.cards import Card, Drop
 from asyncio import sleep
 from core.modules.routine import Observer, RoutineManager
 from core.modules.action import get_trigger, get_channels
@@ -75,7 +75,7 @@ class Client(DiscordClient, Observer):
                 if valid_image_url(attachment.url):
                     await attachment.save(file)
 
-            drop = Drop(message.content, file)
+            drop = Drop(file)
             emote = drop.get_reaction()
             await self.logger.log_action(f'reacted with "{emote}"')
 
