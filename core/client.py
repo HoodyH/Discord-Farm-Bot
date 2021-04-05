@@ -66,21 +66,21 @@ class Client(DiscordClient, Observer):
         except IndexError:
             mentioned_user = 0
 
-        if message.author.id == configs.target_id:  # and mentioned_user == configs.trainer.id:
-            # if 'is dropping' in message.content:
+        if message.author.id == configs.target_id and mentioned_user == configs.trainer.id:
+            if 'is dropping' in message.content:
 
-            # download the attachments
-            file = io.BytesIO()
-            for attachment in message.attachments:
-                if valid_image_url(attachment.url):
-                    await attachment.save(file)
+                # download the attachments
+                file = io.BytesIO()
+                for attachment in message.attachments:
+                    if valid_image_url(attachment.url):
+                        await attachment.save(file)
 
-            drop = Drop(file)
-            emote = drop.get_reaction()
-            await self.logger.log_action(f'reacted with "{emote}"')
+                drop = Drop(file)
+                emote = drop.get_reaction()
+                await self.logger.log_action(f'analyzed drop:\n{drop}Reacted with "{emote}"')
 
-            await sleep(random.randrange(6, 12))
-            await message.add_reaction(emote)
+                await sleep(random.randrange(4, 8))
+                await message.add_reaction(emote)
 
         if message.content.startswith('..log'):
             self.logger.channel = message.channel

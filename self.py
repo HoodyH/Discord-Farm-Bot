@@ -10,7 +10,14 @@ def main():
     c.run(configs.trainer.token, bot=False)
 
 
-if __name__ == '__main__':
-    # main()
-    with open('images/cards.png', 'rb') as f:
+def test():
+    with open('images/cards4-2.png', 'rb') as f:
         d = Drop(f)
+        d.calculate_best()
+        print(d)
+        print(d.get_reaction())
+
+
+if __name__ == '__main__':
+    main()
+    # test()

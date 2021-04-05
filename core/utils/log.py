@@ -2,7 +2,7 @@ from datetime import datetime
 from discord import TextChannel, User
 
 
-LOG_ON_DISCORD = False
+LOG_ON_DISCORD = True
 
 
 class Logger:
