@@ -1,7 +1,8 @@
 from data.configs import configs
 from core.client import Client
 
-from core.modules.routine import RoutineManager
+import io
+from analyzer.karuta.cards import Drop
 
 
 def main():
@@ -10,4 +11,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    with open('images/cards.png', 'rb') as f:
+        d = Drop(f)
